@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.log
+
+# Personal device configs
+tools/mtk_imei/config.txt
+tools/mtk_imei/out/*.zip
+tools/mtk_imei/out/nvram.img
+
+# OS generated
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
