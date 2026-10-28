@@ -1,3 +1,5 @@
+> 🇷🇺 **Для русскоязычных пользователей:** Полная инструкция на русском доступна в [README_ru.md](README_ru.md).
+
 # Redmi Note 8 Pro (begonia) — Baseband & IMEI Restoration Toolkit
 
 [![Platform](https://img.shields.io/badge/SoC-MediaTek%20Helio%20G90T%20(MT6785)-orange.svg)](https://www.mediatek.com/)
@@ -5,92 +7,92 @@
 [![OS](https://img.shields.io/badge/MIUI-12.5.3.0%20(Android%2011)-brightgreen.svg)]()
 [![License](https://img.shields.io/badge/License-GPLv3-lightgrey.svg)](LICENSE)
 
-Полный набор инструментов, готовых скриптов и пошаговая методология для полного устранения циклического краша модема, ликвидации утечки памяти (AEE logger), восстановления прошивки модуля связи (Baseband) и прошивки заводских IMEI 1 / IMEI 2 на **Xiaomi Redmi Note 8 Pro** (`begonia` / `M1906G7E`) через аппаратный режим **BROM (BootROM)** без использования платных авторизаций (No-Auth).
+A complete toolkit, scripts, and step-by-step methodology to permanently fix modem crash loops, eliminate the AEE storage leak (127 GB of log spam), restore Baseband firmware, and write factory IMEI 1 / IMEI 2 on **Xiaomi Redmi Note 8 Pro** (`begonia` / `M1906G7E`) via hardware **BROM (BootROM)** mode without paid authorization (No-Auth SLA/DAA bypass).
 
 ---
 
-## 📱 Характеристики подопытного устройства
+## 📱 Target Device Specifications
 
-* **Модель устройства:** Xiaomi Redmi Note 8 Pro
-* **Кодовое имя платы:** `begonia` / `M1906G7E`
-* **Процессор (SoC):** MediaTek Helio G90T (`MT6785`), архитектура ARM64
-* **Тип накопителя:** UFS 2.1 128 GB (`MT128GASAO4U21`)
-* **Исходная прошивка:** MIUI Global 12.5.3.0 Stable (`RGGRUXM`), Android 11
-* **Версия ядра Linux:** `4.14.186-g368b1f6ce228`
-* **Состояние загрузчика:** Разблокирован (`unlocked` / `orange state`)
-
----
-
-## ⚠️ Симптомы проблемы (Исходное состояние)
-
-1. **Забивание всей встроенной памяти (127 ГБ из 128 ГБ):**
-   * Внутренняя служба логирования MediaTek AEE (`/data/vendor/aee_exp` и `aee_core`) непрерывно записывала дампы памяти и трассировки падений модема (`ccci_mdinit`, `md_logger`), забивая накопитель в ноль за считанные минуты после загрузки.
-2. **Прошивка модуля связи: «Неизвестно» (`Unknown`):**
-   * В настройках системы пункт *«Прошивка модуля связи»* отображал значение *«Неизвестно»*.
-   * Радиомодуль не отвечал на AT-команды демона CCCI (`vendor.ril.md_status_from_ccci: stopped/assert`).
-3. **Отсутствие IMEI и ошибки радиосети:**
-   * При наборе `*#06#` поля IMEI 1 и IMEI 2 оставались пустыми, отображался только серийный номер аппарата.
-   * При попытке вызова появлялось системное сообщение: *«Мобильная сеть недоступна»* или *«Неверный код MMI»*.
-4. **Повреждение блоков калибровки радиоканала:**
-   * Разделы `nvram`, `nvdata` и `nvcfg` содержали поврежденные структуры данных или некорректную файловую систему, препятствовавшую старту подсистемы модема.
+* **Device Model:** Xiaomi Redmi Note 8 Pro
+* **Board Codename:** `begonia` / `M1906G7E`
+* **SoC:** MediaTek Helio G90T (`MT6785`), ARM64 architecture
+* **Flash Storage:** UFS 2.1 128 GB (`MT128GASAO4U21`)
+* **Stock OS:** MIUI Global 12.5.3.0 Stable (`RGGRUXM`), Android 11
+* **Kernel Version:** `4.14.186-g368b1f6ce228`
+* **Bootloader State:** Unlocked (`unlocked` / `orange state`)
 
 ---
 
-## 📸 Галерея этапов восстановления
+## ⚠️ Symptoms & Root Cause (Initial State)
 
-### 1. Исходное состояние: модуль связи слетел («Неизвестно»)
-![Исходное состояние](screenshots/step1_baseband_unknown.jpg)
-
----
-
-### 2. Промежуточный этап: прошивка модуля связи ожила (`MOLY.LR13...`)
-![Модуль связи восстановлен](screenshots/step2_baseband_restored.png)
-
----
-
-### 3. Финальный результат: восстановление IMEI и успешный тест радиоканала
-![IMEI восстановлены](screenshots/step3_imei_restored.jpg)
+1. **Storage Filled to Capacity (127 GB out of 128 GB):**
+   * The MediaTek AEE crash reporter service (`/data/vendor/aee_exp` and `aee_core`) continuously dumped core files and stack traces caused by constant modem panics (`ccci_mdinit`, `md_logger`), filling user storage completely within minutes of boot.
+2. **Baseband Version: «Unknown» (`Неизвестно`):**
+   * *Settings -> About Phone -> All Specs* displayed *«Unknown»* under Baseband.
+   * CCCI modem driver failed to respond to AT commands (`vendor.ril.md_status_from_ccci: stopped/assert`).
+3. **Missing IMEI & Cellular Disconnect:**
+   * Dialing `*#06#` showed empty IMEI 1 and IMEI 2 fields, with only the serial number displayed.
+   * Outgoing calls failed immediately with *«Mobile network not available»* or *«Invalid MMI code»*.
+4. **Corrupted NV Storage Headers:**
+   * Partitions `nvram`, `nvdata`, and `nvcfg` suffered structural corruption in TOC / calibration headers, preventing the modem subsystem from initializing.
 
 ---
 
-## 🛠️ Архитектура и суть решения
+## 📸 Restoration Gallery
 
-На смартфонах Xiaomi с процессорами MediaTek (в частности MT6785) используется двухступенчатая архитектура хранения радиопараметров:
-1. **`nvram` (Master RAW image, 64 MB):** Сырой образ, содержащий файл таблицы оглавления (TOC), RSA-сертификаты (`CSSD_000`), конфигурацию калибровки радиопередатчика (`LD0B_001`), MAC-адреса Wi-Fi и Bluetooth.
-2. **`nvdata` (Target ext4 partition, 64 MB):** Раздел с файловой системой `ext4`, монтируемый Android в `/mnt/vendor/nvdata`. При первом старте системный демон `nvram_daemon` сверяет TOC и распаковывает данные из `nvram` в `nvdata`. Если `nvdata` уже существует и содержит битые индексные файлы, перезапись `nvram` игнорируется!
-
-### Почему обычные способы (MauiMETA / стандартный mtkclient) не помогали:
-- MT6785 на новых патчах безопасности отключает режим META через Preloader из-за таймаута энумерации USB.
-- Xiaomi begonia использует криптографическую проверку RSA (`devPubKeyModulus` + `crticalDataSign`) для первого слота SIM. Для восстановления необходимо пересоздать сертификаты и структуру TOC строго под конкретный `chip_id` процессора.
+### 1. Initial State: Baseband Unknown & Modem Crashed
+![Initial State](screenshots/step1_baseband_unknown.jpg)
 
 ---
 
-## 📋 Инструкция по восстановлению
+### 2. Intermediate State: Baseband Restored (`MOLY.LR13...`)
+![Baseband Restored](screenshots/step2_baseband_restored.png)
 
-### Подготовка:
-1. Установите Python 3.9–3.12 (с установленной галочкой *«Add Python to PATH»*).
-2. Установите фильтр-драйвер [USBDK](https://github.com/daynix/UsbDk/releases) или настройте драйвер `libusb0` (через Zadig) на интерфейс `MediaTek USB Port (VCOM)`.
-3. Установите зависимости Python:
+---
+
+### 3. Final State: IMEI Restored & Radio Transceiver Fully Active
+![IMEI Restored](screenshots/step3_imei_restored.jpg)
+
+---
+
+## 🛠️ Architecture & Solution Breakdown
+
+On Xiaomi MediaTek smartphones (specifically MT6785), radio parameters rely on a two-tier architecture:
+1. **`nvram` (Master RAW image, 64 MB):** Raw block partition containing Table of Contents (TOC), RSA certificates (`CSSD_000`), RF calibration tables (`LD0B_001`), Wi-Fi MAC, and Bluetooth MAC.
+2. **`nvdata` (Target ext4 partition, 64 MB):** Formatted with an `ext4` filesystem and mounted by Android at `/mnt/vendor/nvdata`. On first boot, the system daemon `nvram_daemon` compares TOC headers and synchronizes database files from `nvram` into `nvdata`. If `nvdata` already exists with corrupted index files, changes written to `nvram` are ignored!
+
+### Why Standard Methods (MauiMETA / Generic mtkclient) Fail:
+- MT6785 on modern security patches disables META mode over Preloader due to USB enumeration timeouts.
+- Xiaomi begonia enforces RSA signature verification (`devPubKeyModulus` + `crticalDataSign`) for SIM Slot 1. Restoration requires reconstructing TOC entries signed specifically for the target SoC `chip_id`.
+
+---
+
+## 📋 Step-by-Step Restoration Guide
+
+### Prerequisites:
+1. Install Python 3.9–3.12 (check *«Add Python to PATH»* during installation).
+2. Install [USBDK](https://github.com/daynix/UsbDk/releases) filter driver or assign `libusb0` via Zadig to `MediaTek USB Port (VCOM)`.
+3. Install required Python packages:
    ```cmd
    pip install pyusb pycryptodome
    ```
 
-### Шаг 1. Очистка поврежденных NV-разделов
-Запустите `1_wipe_corrupted_nv.cmd` (или выполните команду вручную):
+### Step 1. Wipe Corrupted NV Partitions
+Run `1_wipe_corrupted_nv.cmd` (or execute manually):
 ```cmd
 python tools\mtkclient\mtk.py --ptype kamakiri e nvram,nvdata,nvcfg
 ```
-* **Действие:** Выключите телефон. Зажмите обе кнопки громкости (**Vol+** и **Vol-**) и подключите USB-кабель.
-* `mtkclient` применит эксплойт Kamakiri в BROM-режиме, обойдет Watchdog и авторизацию SLA/DAA и полностью очистит поврежденные разделы памяти.
+* **Procedure:** Power off the phone completely. Hold both volume buttons (**Vol+** and **Vol-**) and plug in the USB cable.
+* `mtkclient` exploits BROM mode via Kamakiri, disables the hardware watchdog, bypasses SLA/DAA authentication, and formats corrupted NV partitions.
 
 ---
 
-### Шаг 2. Генерация валидного NVRAM-образа под ваш аппарат
-1. Получите `chip_id` вашего процессора через ADB (телефон должен быть включен):
+### Step 2. Generate Valid NVRAM Image with Your Device Identifiers
+1. Retrieve your SoC `chip_id` via ADB (phone powered on):
    ```cmd
    adb shell getprop ro.boot.chipid
    ```
-2. Скопируйте файл `tools\mtk_imei\config.example.json` в `tools\mtk_imei\config.txt` и заполните ваши данные:
+2. Copy `tools\mtk_imei\config.example.json` to `tools\mtk_imei\config.txt` and fill in your values:
    ```json
    {
      "patch_cert": 1,
@@ -103,52 +105,52 @@ python tools\mtkclient\mtk.py --ptype kamakiri e nvram,nvdata,nvcfg
      "bt_mac": "000046000001"
    }
    ```
-3. Запустите скрипт генерации `2_generate_nvram.cmd`. Скрипт пересоздаст цифровую подпись, структуру TOC и сформирует правильный файл `tools\mtk_imei\out\nvram.img` размером ровно 64 МБ (67,108,864 байт).
+3. Run `2_generate_nvram.cmd`. The script rebuilds the RSA signature blocks, sets up TOC entries, and creates `tools\mtk_imei\out\nvram.img` (exactly 67,108,864 bytes).
 
 ---
 
-### Шаг 3. Запись сгенерированного NVRAM в память смартфона
-Запустите `3_flash_nvram.cmd`:
+### Step 3. Flash Restored NVRAM to Device
+Run `3_flash_nvram.cmd`:
 ```cmd
 python tools\mtkclient\mtk.py --ptype kamakiri w nvram tools\mtk_imei\out\nvram.img
 ```
-* Выключите телефон, зажмите **Vol+** и **Vol-** и подключите кабель. Образ запишется в UFS-сектор `95616`.
+* Power off the phone, hold **Vol+** and **Vol-**, and connect USB. The image writes directly to UFS sector `95616`.
 
 ---
 
-### Шаг 4. Прошивка чистого ext4-образа NVDATA (Критически важный шаг!)
-Чтобы система инициировала миграцию параметров из `nvram` в файловую систему `/mnt/vendor/nvdata`, раздел `nvdata` должен иметь чистую разметку ext4.
+### Step 4. Flash Clean NVDATA ext4 Image (Critical Step!)
+To trigger `nvram_daemon` to unpack and synchronize parameters from `nvram` into `/mnt/vendor/nvdata`, the `nvdata` partition must be flashed with a pristine ext4 layout.
 
-Запустите `4_flash_nvdata.cmd`:
+Run `4_flash_nvdata.cmd`:
 ```cmd
 python tools\mtkclient\mtk.py --ptype kamakiri w nvdata tools\mtk_imei\out\nvdata.img
 ```
-* Зажмите **Vol+** и **Vol-** и подключите кабель. Чистый образ запишется в UFS-сектор `33160`.
+* Hold **Vol+** and **Vol-** and connect USB. The clean ext4 image writes to UFS sector `33160`.
 
 ---
 
-## 📡 Проверка работоспособности
+## 📡 Verification & Testing
 
-1. Отключите кабель и включите смартфон зажатием кнопки питания (~10 секунд).
-2. Зайдите в меню: **Настройки -> О телефоне -> Все параметры -> Общая информация (или Статус)**.
-3. Проверьте отображение:
-   * Прошивка модуля связи: `MOLY.LR13.R1.TC8.SP.V2.P57` (или актуальная версия вашей сборки)
-   * IMEI (слот 1) и IMEI (слот 2)
-4. **Тест радиоканала без физической SIM-карты:**
-   * Откройте звонилку, наберите `112` и нажмите вызов.
-   * Появление гудков вызова службы экстренной помощи подтверждает успешную регистрацию трансивера (RF) на ближайшей базовой станции любого сотового оператора.
+1. Unplug the cable and power on the phone (hold Power for ~10 seconds).
+2. Navigate to: **Settings -> About Phone -> All Specs -> Status (General Info)**.
+3. Confirm that:
+   * Baseband version shows: `MOLY.LR13.R1.TC8.SP.V2.P57` (or your build's active modem)
+   * IMEI (Slot 1) and IMEI (Slot 2) are present.
+4. **Radio Transceiver Test (Without SIM Card):**
+   * Open the Phone dialer, dial `112`, and press Call.
+   * An audible dial tone or response from emergency services confirms that RF transceivers, calibration data, and base station registration are fully operational.
 
 ---
 
-## 💡 Устранение неполадок (FAQ)
+## 💡 Troubleshooting (FAQ)
 
 * **`Kamakiri2 failed, cache issue :(`:**
-  * Защита BROM MT6785 блокирует команды кэша при пейлоаде Kamakiri2. В скриптах форсирован параметр `--ptype kamakiri`.
-* **Краш mtkclient после 7 точек (`...........`):**
-  * В оригинальном `mtkclient` на Windows 10/11 при использовании `libusb0` вызов `libusb_set_option` вызывал падение и сброс USB-бэкенда. В репозиторий включена пропатченная версия `usblib.py` и `Port.py` с увеличенным временем ожидания энумерации порта до 3 минут.
+  * MT6785 BootROM cache blocks `0xDA` / Kamakiri2 payloads. The scripts in this toolkit enforce `--ptype kamakiri`.
+* **mtkclient crash after 7 dots (`...........`):**
+  * On Windows 10/11 using `libusb0`, unhandled calls to `libusb_set_option` crash the backend. This toolkit includes patched `usblib.py` and `Port.py` with safe attribute guards and extended port wait timeouts (up to 3 minutes).
 
 ---
 
-## 🤝 Благодарности
-- **[bkerler](https://github.com/bkerler/mtkclient)** — за потрясающий инструмент mtkclient и реализацию эксплойта Kamakiri.
-- **[timjosten](https://github.com/timjosten/mtk_imei)** — за генератор сертификатов и структур NVRAM для устройств MT6785.
+## 🤝 Credits
+- **[bkerler](https://github.com/bkerler/mtkclient)** — for the indispensable mtkclient tool and Kamakiri exploit implementation.
+- **[timjosten](https://github.com/timjosten/mtk_imei)** — for the MT6785 certificate generator and NVRAM TOC structures.
